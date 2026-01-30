@@ -1301,11 +1301,13 @@ export interface GptAccountsListResponse {
 
 export interface CompleteGptAccountInfoResponse {
   email: string | null
-  chatgptAccountId: string | null
-  name: string | null
-  planType: string | null
-  expiresAt: string | null
-  hasActiveSubscription: boolean
+  accounts: {
+    accountId: string
+    name: string | null
+    planType: string | null
+    expiresAt: string | null
+    hasActiveSubscription: boolean
+  }[]
 }
 
 export const gptAccountService = {

@@ -63,13 +63,16 @@ router.post('/complete-info', async (req, res) => {
 
     const apiInfo = await fetchOpenAiAccountInfo(token, proxy)
 
+    if (!apiInfo.accounts || apiInfo.accounts.length === 0) {
+      return res.status(404).json({ error: '该 Token 下未找到 Team 类型的账号' })
+    }
+
     res.json({
       email: tokenInfo.email,
-      chatgptAccountId: apiInfo.accountId,
-      name: apiInfo.name,
-      planType: apiInfo.planType,
-      expiresAt: apiInfo.expiresAt ? formatExpireAt(new Date(apiInfo.expiresAt)) : (tokenInfo.exp ? formatExpireAt(new Date(tokenInfo.exp)) : null),
-      hasActiveSubscription: apiInfo.hasActiveSubscription
+      accounts: apiInfo.accounts.map(acc => ({
+        ...acc,
+        expiresAt: acc.expiresAt ? formatExpireAt(new Date(acc.expiresAt)) : (tokenInfo.exp ? formatExpireAt(new Date(tokenInfo.exp)) : null),
+      }))
     })
   } catch (error) {
     if (error instanceof AccountSyncError) {

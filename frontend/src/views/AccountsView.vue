@@ -92,6 +92,8 @@ const inviting = ref(false)
 const togglingOpenAccountId = ref<number | null>(null)
 const banningAccountId = ref<number | null>(null)
 const autoCompleting = ref(false)
+const foundAccounts = ref<any[]>([])
+const showAccountSelectDialog = ref(false)
 
 // Tab 和 邀请列表状态
 const activeTab = ref<'members' | 'invites'>('members')
@@ -243,24 +245,42 @@ const handleAutoComplete = async () => {
   try {
     const result = await gptAccountService.completeInfo(formData.value.token.trim())
     
+    // Set email if it's currently empty
     if (result.email && !formData.value.email) {
       formData.value.email = result.email
     }
     
-    if (result.chatgptAccountId) {
-      formData.value.chatgptAccountId = result.chatgptAccountId
+    // Collect accounts and decide showing selection or directly applying
+    if (result.accounts && result.accounts.length > 0) {
+      foundAccounts.value = result.accounts
+      if (result.accounts.length === 1) {
+        applyAccountSelection(result.accounts[0])
+        showSuccessToast('已成功补全账号信息')
+      } else {
+        showSuccessToast(`检测到 ${result.accounts.length} 个 Team 账号，请在下方下拉框选择`)
+      }
+    } else {
+      showErrorToast('未找到 Team 类型的账号')
     }
-    
-    if (result.expiresAt) {
-      formData.value.expireAt = toDatetimeLocal(result.expiresAt)
-    }
-
-    showSuccessToast('已成功通过 Token 补全账号信息')
   } catch (err: any) {
     const message = err.response?.data?.error || '自动补全失败，请手动填写'
     showErrorToast(message)
   } finally {
     autoCompleting.value = false
+  }
+}
+
+const applyAccountSelection = (account: any) => {
+  formData.value.chatgptAccountId = account.accountId
+  if (account.expiresAt) {
+    formData.value.expireAt = toDatetimeLocal(account.expiresAt)
+  }
+}
+
+const onAccountSelectChange = (accountId: string) => {
+  const selected = foundAccounts.value.find(acc => acc.accountId === accountId)
+  if (selected) {
+    applyAccountSelection(selected)
   }
 }
 
@@ -930,8 +950,7 @@ const handleInviteSubmit = async () => {
                 <Input
                   v-model="formData.email"
                   type="email"
-                  required
-                  placeholder="name@example.com"
+                  placeholder="name@example.com (可选，输入 Token 后可自动补全)"
                   class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all"
                 />
               </div>
@@ -970,10 +989,24 @@ const handleInviteSubmit = async () => {
 		              <div class="grid grid-cols-2 gap-4">
 		                 <div class="space-y-2">
 		                    <Label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">ChatGPT ID</Label>
+                        <Select v-if="foundAccounts.length > 0" :model-value="formData.chatgptAccountId" @update:model-value="onAccountSelectChange">
+                          <SelectTrigger class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono text-sm">
+                            <SelectValue placeholder="请选择 Team 账号" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem 
+                              v-for="acc in foundAccounts" 
+                              :key="acc.accountId" 
+                              :value="acc.accountId"
+                            >
+                              {{ acc.name }} ({{ acc.accountId.slice(0, 8) }}...)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
 		                    <Input
+                          v-else
 		                      v-model="formData.chatgptAccountId"
-		                      required
-		                      placeholder="必填"
+		                      placeholder="可选，输入 Token 后可自动补全"
 		                      class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono text-sm"
 		                    />
 		                 </div>

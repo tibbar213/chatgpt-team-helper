@@ -843,38 +843,28 @@ export async function fetchOpenAiAccountInfo(token, proxy = null) {
 
   const data = parseJsonOrThrow(text, { logContext, message: 'OpenAI 接口返回格式异常' })
 
-  // Find the first account that is a team account or has active subscription
-  const accounts = data.accounts || {}
-  const accountIds = Object.keys(accounts)
+  const accountsMap = data.accounts || {}
+  const accountIds = Object.keys(accountsMap)
 
   if (accountIds.length === 0) {
     throw new AccountSyncError('未找到关联的 ChatGPT 账号', 404)
   }
 
-  // Priority: 1. Active Team 2. Any Team 3. Active Plus 4. First one
-  let selectedId = accountIds.find(id => {
-    const acc = accounts[id]
-    return acc.account?.plan_type === 'team' && acc.entitlement?.has_active_subscription
-  })
+  // Filter only team accounts as the user requested only team accounts
+  const teamAccounts = accountIds
+    .map(id => {
+      const acc = accountsMap[id]
+      return {
+        accountId: id,
+        name: acc.account?.name || 'Unnamed Team',
+        planType: acc.account?.plan_type || null,
+        expiresAt: acc.entitlement?.expires_at || null,
+        hasActiveSubscription: !!acc.entitlement?.has_active_subscription
+      }
+    })
+    .filter(acc => acc.planType === 'team')
 
-  if (!selectedId) {
-    selectedId = accountIds.find(id => accounts[id].account?.plan_type === 'team')
-  }
-
-  if (!selectedId) {
-    selectedId = accountIds.find(id => accounts[id].entitlement?.has_active_subscription)
-  }
-
-  if (!selectedId) {
-    selectedId = accountIds[0]
-  }
-
-  const selected = accounts[selectedId]
   return {
-    accountId: selectedId,
-    name: selected.account?.name || null,
-    planType: selected.account?.plan_type || null,
-    expiresAt: selected.entitlement?.expires_at || null,
-    hasActiveSubscription: !!selected.entitlement?.has_active_subscription
+    accounts: teamAccounts
   }
 }
