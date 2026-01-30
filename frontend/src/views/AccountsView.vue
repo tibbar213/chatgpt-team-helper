@@ -93,6 +93,7 @@ const togglingOpenAccountId = ref<number | null>(null)
 const banningAccountId = ref<number | null>(null)
 const autoCompleting = ref(false)
 const foundAccounts = ref<any[]>([])
+const showSuggestions = ref(false)
 const showAccountSelectDialog = ref(false)
 const showBatchImportDialog = ref(false)
 const batchImportData = ref('')
@@ -260,7 +261,8 @@ const handleAutoComplete = async () => {
         applyAccountSelection(result.accounts[0])
         showSuccessToast('已成功补全账号信息')
       } else {
-        showSuccessToast(`检测到 ${result.accounts.length} 个 Team 账号，请在下方下拉框选择`)
+        showSuggestions.value = true
+        showSuccessToast(`检测到 ${result.accounts.length} 个 Team 账号，请点击输入框选择`)
       }
     } else {
       showErrorToast('未找到 Team 类型的账号')
@@ -279,13 +281,24 @@ const applyAccountSelection = (account: any) => {
   if (account.expiresAt) {
     formData.value.expireAt = toDatetimeLocal(account.expiresAt)
   }
+  showSuggestions.value = false
 }
 
-const onAccountSelectChange = (accountId: string) => {
-  const selected = foundAccounts.value.find(acc => acc.accountId === accountId)
-  if (selected) {
-    applyAccountSelection(selected)
+const selectAccount = (account: any) => {
+  applyAccountSelection(account)
+}
+
+const handleInputFocus = () => {
+  if (foundAccounts.value.length > 0) {
+    showSuggestions.value = true
   }
+}
+
+const handleInputBlur = () => {
+  // 延迟关闭，以便点击事件能先触发
+  setTimeout(() => {
+    showSuggestions.value = false
+  }, 200)
 }
 
 const handleSubmit = async () => {
@@ -1103,26 +1116,34 @@ const handleBatchImport = async () => {
 		              <div class="grid grid-cols-2 gap-4">
 		                 <div class="space-y-2">
 		                    <Label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">ChatGPT ID</Label>
-                        <Select v-if="foundAccounts.length > 0" :model-value="formData.chatgptAccountId" @update:model-value="onAccountSelectChange">
-                          <SelectTrigger class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono text-sm">
-                            <SelectValue placeholder="请选择 Team 账号" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem 
-                              v-for="acc in foundAccounts" 
-                              :key="acc.accountId" 
-                              :value="acc.accountId"
-                            >
-                              {{ acc.name }} ({{ acc.accountId.slice(0, 8) }}...)
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-		                    <Input
-                          v-else
-		                      v-model="formData.chatgptAccountId"
-		                      placeholder="如果不使用补全，请手动输入"
-		                      class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono text-sm"
-		                    />
+                        <div class="relative">
+                          <Input
+                            v-model="formData.chatgptAccountId"
+                            placeholder="自动补全或手动输入"
+                            class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono text-sm"
+                            @focus="handleInputFocus"
+                            @blur="handleInputBlur"
+                          />
+                          
+                          <!-- Suggestions Dropdown -->
+                          <div 
+                            v-if="showSuggestions && foundAccounts.length > 0" 
+                            class="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1"
+                          >
+                            <div class="max-h-48 overflow-y-auto">
+                              <button
+                                v-for="acc in foundAccounts"
+                                :key="acc.accountId"
+                                type="button"
+                                class="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex flex-col gap-0.5"
+                                @click="selectAccount(acc)"
+                              >
+                                <span class="text-sm font-bold text-gray-900">{{ acc.name }}</span>
+                                <span class="text-xs text-gray-400 font-mono">{{ acc.accountId }}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
 		                 </div>
 		                 <div class="space-y-2">
 		                    <Label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">设备 ID</Label>
