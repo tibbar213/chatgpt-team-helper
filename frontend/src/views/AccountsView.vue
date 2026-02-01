@@ -44,6 +44,9 @@ const openStatusFilter = ref<'all' | 'open' | 'closed'>('all')
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const { success: showSuccessToast, error: showErrorToast } = useToast()
 const appConfigStore = useAppConfigStore()
+const dateFormatOptions = computed(() => ({
+  timeZone: appConfigStore.timezone,
+  locale: appConfigStore.locale,
 }))
 
 const CHANNEL_LABELS: Record<RedemptionChannel, string> = {
