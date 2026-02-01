@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   app:
+    build: .
     image: auto-gpt-team:latest
     # image: kylsky/auto-gpt-team:latest
     container_name: auto-gpt-team
