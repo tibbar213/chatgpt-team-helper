@@ -267,7 +267,7 @@ function generateRedemptionCode(length = 12) {
 // 内部创建账号逻辑，不包含 saveDatabase()
 // 返回数组，支持一个输入对应多个（如 token 含有多个 team）
 async function createAccountInternal(db, body) {
-  let { email, token, refreshToken, userCount, chatgptAccountId, oaiDeviceId, expireAt } = body
+  let { email, token, refreshToken, userCount, chatgptAccountId, oaiDeviceId, expireAt, channel } = body
   const accountsToCreate = []
 
   // Auto-complete if token is provided
@@ -294,7 +294,8 @@ async function createAccountInternal(db, body) {
             oaiDeviceId,
             expireAt: expireAt || (team.expiresAt ? formatExpireAt(new Date(team.expiresAt)) : (tokenInfo?.exp ? formatExpireAt(new Date(tokenInfo.exp * 1000)) : null)),
             isDemoted: body.isDemoted !== undefined ? body.isDemoted : detectedIsDemoted,
-            isBanned: body.isBanned
+            isBanned: body.isBanned,
+            channel: body.channel
           })
         }
       }
@@ -311,7 +312,7 @@ async function createAccountInternal(db, body) {
   const finalResults = []
 
   for (const accData of accountsToCreate) {
-    let { email: accEmail, token: accToken, refreshToken: accRefreshToken, userCount: accUserCount, chatgptAccountId: accChatgptAccountId, oaiDeviceId: accOaiDeviceId, expireAt: accExpireAt } = accData
+    let { email: accEmail, token: accToken, refreshToken: accRefreshToken, userCount: accUserCount, chatgptAccountId: accChatgptAccountId, oaiDeviceId: accOaiDeviceId, expireAt: accExpireAt, channel: accChannel } = accData
 
     const hasIsDemoted = Object.prototype.hasOwnProperty.call(accData, 'isDemoted') || Object.prototype.hasOwnProperty.call(accData, 'is_demoted')
     const isDemotedInput = Object.prototype.hasOwnProperty.call(accData, 'isDemoted') ? accData.isDemoted : accData.is_demoted
@@ -386,8 +387,8 @@ async function createAccountInternal(db, body) {
       while (attempts < 5 && !success) {
         try {
           db.run(
-            `INSERT INTO redemption_codes (code, account_email, created_at, updated_at) VALUES (?, ?, DATETIME('now', 'localtime'), DATETIME('now', 'localtime'))`,
-            [codeValue, normalizedEmail]
+            `INSERT INTO redemption_codes (code, account_email, channel, created_at, updated_at) VALUES (?, ?, ?, DATETIME('now', 'localtime'), DATETIME('now', 'localtime'))`,
+            [codeValue, normalizedEmail, accChannel || 'common']
           )
           generatedCodes.push(codeValue)
           success = true

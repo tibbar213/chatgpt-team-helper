@@ -279,6 +279,7 @@ export interface GptAccount {
   expireAt?: string | null
   createdAt: string
   updatedAt: string
+  channel?: RedemptionChannel
 }
 
 export interface CreateGptAccountDto {
@@ -291,6 +292,7 @@ export interface CreateGptAccountDto {
   chatgptAccountId: string
   oaiDeviceId?: string
   expireAt?: string
+  channel?: RedemptionChannel
 }
 
 export interface ChatgptAccountUser {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { authService, gptAccountService, type GptAccount, type CreateGptAccountDto, type SyncUserCountResponse, type GptAccountsListParams, type ChatgptAccountInviteItem } from '@/services/api'
+import { authService, gptAccountService, type GptAccount, type CreateGptAccountDto, type SyncUserCountResponse, type GptAccountsListParams, type ChatgptAccountInviteItem, type RedemptionChannel } from '@/services/api'
 import { formatShanghaiDate } from '@/lib/datetime'
 import { useAppConfigStore } from '@/stores/appConfig'
 import {
@@ -44,10 +44,15 @@ const openStatusFilter = ref<'all' | 'open' | 'closed'>('all')
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 const { success: showSuccessToast, error: showErrorToast } = useToast()
 const appConfigStore = useAppConfigStore()
-const dateFormatOptions = computed(() => ({
-  timeZone: appConfigStore.timezone,
-  locale: appConfigStore.locale,
 }))
+
+const CHANNEL_LABELS: Record<RedemptionChannel, string> = {
+  common: '通用渠道',
+  'linux-do': 'Linux DO 渠道',
+  xhs: '小红书渠道',
+  xianyu: '闲鱼渠道',
+  'artisan-flow': '工匠流量',
+}
 
 // Teleport 目标是否存在
 const teleportReady = ref(false)
@@ -97,6 +102,7 @@ const showSuggestions = ref(false)
 const showAccountSelectDialog = ref(false)
 const showBatchImportDialog = ref(false)
 const batchImportData = ref('')
+const batchImportChannel = ref<RedemptionChannel>('common')
 const isImporting = ref(false)
 
 // Tab 和 邀请列表状态
@@ -117,7 +123,8 @@ const formData = ref<CreateGptAccountDto>({
   isBanned: false,
   chatgptAccountId: '',
   oaiDeviceId: '',
-  expireAt: ''
+  expireAt: '',
+  channel: 'common'
 })
 
 // 转换存储格式 (YYYY/MM/DD HH:mm:ss) 为 datetime-local 格式 (YYYY-MM-DDTHH:mm:ss)
@@ -227,7 +234,8 @@ const openEditDialog = (account: GptAccount) => {
     isBanned: Boolean(account.isBanned),
     chatgptAccountId: account.chatgptAccountId || '',
     oaiDeviceId: account.oaiDeviceId || '',
-    expireAt: toDatetimeLocal(account.expireAt || '')
+    expireAt: toDatetimeLocal(account.expireAt || ''),
+    channel: (account as any).channel || 'common'
   }
   showDialog.value = true
 }
@@ -235,7 +243,7 @@ const openEditDialog = (account: GptAccount) => {
 const closeDialog = () => {
   showDialog.value = false
   editingAccount.value = null
-  formData.value = { email: '', token: '', refreshToken: '', userCount: 0, isDemoted: false, isBanned: false, chatgptAccountId: '', oaiDeviceId: '', expireAt: '' }
+  formData.value = { email: '', token: '', refreshToken: '', userCount: 0, isDemoted: false, isBanned: false, chatgptAccountId: '', oaiDeviceId: '', expireAt: '', channel: 'common' }
   autoCompleting.value = false
 }
 
@@ -662,7 +670,8 @@ const handleBatchImport = async () => {
         chatgptAccountId: ids ? ids[0] : '',
         refreshToken: refreshTokens ? refreshTokens[0] : '',
         userCount: 1,
-        isBanned: false
+        isBanned: false,
+        channel: batchImportChannel.value
       })
     }
   }
@@ -1032,6 +1041,20 @@ const handleBatchImport = async () => {
         
         <div class="px-8 pb-8 space-y-5">
           <div class="space-y-2">
+            <Label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">导入渠道</Label>
+            <Select v-model="batchImportChannel">
+              <SelectTrigger class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all">
+                <SelectValue placeholder="选择渠道" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="(label, key) in CHANNEL_LABELS" :key="key" :value="key">
+                  {{ label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="space-y-2">
             <Label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">批量数据</Label>
             <textarea
               v-model="batchImportData"
@@ -1111,6 +1134,20 @@ const handleBatchImport = async () => {
                   placeholder="可选，用于自动刷新"
                   class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-mono text-sm"
                 />
+              </div>
+
+              <div class="space-y-2">
+                <Label class="text-xs font-semibold text-gray-500 uppercase tracking-wider">兑换码渠道</Label>
+                <Select v-model="formData.channel">
+                  <SelectTrigger class="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all">
+                    <SelectValue placeholder="选择渠道" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="(label, key) in CHANNEL_LABELS" :key="key" :value="key">
+                      {{ label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
 		              <div class="grid grid-cols-2 gap-4">
