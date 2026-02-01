@@ -49,13 +49,13 @@ const dateFormatOptions = computed(() => ({
   locale: appConfigStore.locale,
 }))
 
-const CHANNEL_LABELS: Record<RedemptionChannel, string> = {
-  common: '通用渠道',
-  'linux-do': 'Linux DO 渠道',
-  xhs: '小红书渠道',
-  xianyu: '闲鱼渠道',
-  'artisan-flow': '工匠流量',
-}
+const channelOptions: { value: RedemptionChannel; label: string }[] = [
+  { value: 'common', label: '通用渠道' },
+  { value: 'linux-do', label: 'Linux DO 渠道' },
+  { value: 'xhs', label: '小红书渠道' },
+  { value: 'xianyu', label: '闲鱼渠道' },
+  { value: 'artisan-flow', label: '工匠流量' },
+]
 
 // Teleport 目标是否存在
 const teleportReady = ref(false)
@@ -1050,8 +1050,8 @@ const handleBatchImport = async () => {
                 <SelectValue placeholder="选择渠道" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="(label, key) in CHANNEL_LABELS" :key="key" :value="key">
-                  {{ label }}
+                <SelectItem v-for="option in channelOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -1146,8 +1146,8 @@ const handleBatchImport = async () => {
                     <SelectValue placeholder="选择渠道" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem v-for="(label, key) in CHANNEL_LABELS" :key="key" :value="key">
-                      {{ label }}
+                    <SelectItem v-for="option in channelOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
                     </SelectItem>
                   </SelectContent>
                 </Select>
